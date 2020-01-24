@@ -1,7 +1,6 @@
 import { ARGS_PROXY_TAGS } from '@ember/-internals/metal';
 import { Factory } from '@ember/-internals/owner';
 import { HAS_NATIVE_PROXY } from '@ember/-internals/utils';
-import { EMBER_CUSTOM_COMPONENT_ARG_PROXY } from '@ember/canary-features';
 import { assert } from '@ember/debug';
 import { DEBUG } from '@glimmer/env';
 import {
@@ -57,11 +56,7 @@ export function capabilities(
     managerAPI === '3.4' || managerAPI === '3.13'
   );
 
-  let updateHook = true;
-
-  if (EMBER_CUSTOM_COMPONENT_ARG_PROXY) {
-    updateHook = managerAPI === '3.13' ? Boolean(options.updateHook) : true;
-  }
+  let updateHook = managerAPI === '3.13' ? Boolean(options.updateHook) : true;
 
   return {
     asyncLifeCycleCallbacks: Boolean(options.asyncLifecycleCallbacks),
@@ -191,76 +186,72 @@ export default class CustomComponentManager<ComponentInstance>
     let value;
     let namedArgsProxy = {};
 
-    if (EMBER_CUSTOM_COMPONENT_ARG_PROXY) {
-      if (HAS_NATIVE_PROXY) {
-        let handler: ProxyHandler<{}> = {
-          get(_target, prop) {
-            if (capturedArgs.named.has(prop as string)) {
-              let ref = capturedArgs.named.get(prop as string);
-              consume(ref.tag);
+    if (HAS_NATIVE_PROXY) {
+      let handler: ProxyHandler<{}> = {
+        get(_target, prop) {
+          if (capturedArgs.named.has(prop as string)) {
+            let ref = capturedArgs.named.get(prop as string);
+            consume(ref.tag);
 
-              return ref.value();
-            }
-          },
+            return ref.value();
+          }
+        },
 
-          has(_target, prop) {
-            return capturedArgs.named.has(prop as string);
-          },
+        has(_target, prop) {
+          return capturedArgs.named.has(prop as string);
+        },
 
-          ownKeys(_target) {
-            return capturedArgs.named.names;
-          },
+        ownKeys(_target) {
+          return capturedArgs.named.names;
+        },
 
-          getOwnPropertyDescriptor(_target, prop) {
-            assert(
-              'args proxies do not have real property descriptors, so you should never need to call getOwnPropertyDescriptor yourself. This code exists for enumerability, such as in for-in loops and Object.keys()',
-              capturedArgs.named.has(prop as string)
-            );
+        getOwnPropertyDescriptor(_target, prop) {
+          assert(
+            'args proxies do not have real property descriptors, so you should never need to call getOwnPropertyDescriptor yourself. This code exists for enumerability, such as in for-in loops and Object.keys()',
+            capturedArgs.named.has(prop as string)
+          );
 
-            return {
-              enumerable: true,
-              configurable: true,
-            };
-          },
-        };
-
-        if (DEBUG) {
-          handler.set = function(_target, prop) {
-            assert(
-              `You attempted to set ${definition.ComponentClass.class}#${String(
-                prop
-              )} on a components arguments. Component arguments are immutable and cannot be updated directly, they always represent the values that are passed to your component. If you want to set default values, you should use a getter instead`
-            );
-
-            return false;
-          };
-        }
-
-        namedArgsProxy = new Proxy(namedArgsProxy, handler);
-      } else {
-        capturedArgs.named.names.forEach(name => {
-          Object.defineProperty(namedArgsProxy, name, {
+          return {
             enumerable: true,
             configurable: true,
-            get() {
-              let ref = capturedArgs.named.get(name);
-              consume(ref.tag);
+          };
+        },
+      };
 
-              return ref.value();
-            },
-          });
-        });
+      if (DEBUG) {
+        handler.set = function(_target, prop) {
+          assert(
+            `You attempted to set ${definition.ComponentClass.class}#${String(
+              prop
+            )} on a components arguments. Component arguments are immutable and cannot be updated directly, they always represent the values that are passed to your component. If you want to set default values, you should use a getter instead`
+          );
+
+          return false;
+        };
       }
 
-      ARGS_PROXY_TAGS.set(namedArgsProxy, capturedArgs.named);
-
-      value = {
-        named: namedArgsProxy,
-        positional: capturedArgs.positional.value(),
-      };
+      namedArgsProxy = new Proxy(namedArgsProxy, handler);
     } else {
-      value = capturedArgs.value();
+      capturedArgs.named.names.forEach(name => {
+        Object.defineProperty(namedArgsProxy, name, {
+          enumerable: true,
+          configurable: true,
+          get() {
+            let ref = capturedArgs.named.get(name);
+            consume(ref.tag);
+
+            return ref.value();
+          },
+        });
+      });
     }
+
+    ARGS_PROXY_TAGS.set(namedArgsProxy, capturedArgs.named);
+
+    value = {
+      named: namedArgsProxy,
+      positional: capturedArgs.positional.value(),
+    };
 
     const component = delegate.createComponent(definition.ComponentClass.class, value);
 
@@ -286,16 +277,10 @@ export default class CustomComponentManager<ComponentInstance>
 
     let { delegate, component, args, namedArgsProxy } = bucket;
 
-    let value;
-
-    if (EMBER_CUSTOM_COMPONENT_ARG_PROXY) {
-      value = {
-        named: namedArgsProxy!,
-        positional: args.positional.value(),
-      };
-    } else {
-      value = args.value();
-    }
+    let value = {
+      named: namedArgsProxy!,
+      positional: args.positional.value(),
+    };
 
     if (hasUpdateHook(delegate)) {
       delegate.updateComponent(component, value);
