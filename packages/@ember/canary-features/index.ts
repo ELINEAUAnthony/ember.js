@@ -15,7 +15,6 @@ import { assign } from '@ember/polyfills';
 export const DEFAULT_FEATURES = {
   EMBER_LIBRARIES_ISREGISTERED: null,
   EMBER_IMPROVED_INSTRUMENTATION: null,
-  EMBER_MODULE_UNIFICATION: false,
 };
 
 /**
@@ -66,4 +65,3 @@ function featureValue(value: null | boolean) {
 
 export const EMBER_LIBRARIES_ISREGISTERED = featureValue(FEATURES.EMBER_LIBRARIES_ISREGISTERED);
 export const EMBER_IMPROVED_INSTRUMENTATION = featureValue(FEATURES.EMBER_IMPROVED_INSTRUMENTATION);
-export const EMBER_MODULE_UNIFICATION = featureValue(FEATURES.EMBER_MODULE_UNIFICATION);
