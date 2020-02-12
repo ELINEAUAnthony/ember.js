@@ -34,6 +34,12 @@ if (DEBUG) {
 
     SEEN_TAGS!.add(tag);
 
+    if (Array.isArray(obj) && !isNaN(Number(keyName))) {
+      // don't setup mandatory setter, arrays can remove property descriptors
+      // themselves and we can't control them correctly.
+      return;
+    }
+
     let desc = (lookupDescriptor(obj, keyName) as PropertyDescriptorWithMeta) || {};
 
     if (desc.get || desc.set) {
